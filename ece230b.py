@@ -85,17 +85,103 @@ def get_rc_pulse (beta, span, sps):
     t = np.linspace(-span/2, span/2, length)
 
     # Calculate raised cosine pulse
-    if (int(beta) == 0):
+    if (beta == 0):
         pulse = np.sinc(t)
     else:
         pulse = np.sinc(t) * ( np.cos(np.pi * beta * t) / (1 - ((2 * beta * t)**2)) )
         pulse[np.abs(2 * beta * t) == 1] = (np.pi / 4) * np.sinc(1 / (2 * beta))
 
     # Normalize to unit peak
-    pulse /= np.max(np.abs(pulse))
+    # pulse /= np.max(np.abs(pulse))
 
     # plt.plot(t, pulse)
     # plt.grid(True)
     # plt.show()
 
     return t, pulse
+
+def get_rrc_pulse (beta, span, sps): 
+    """
+    Generates a root raised cosine pulse shape.
+
+    Inputs: 
+        beta: Rolloff factor (between 0 and 1, inclusive).
+        span: The integer number of symbol durations spanned by the pulse, not including the symbol at t=0. 
+        sps: Samples per symbol. 
+
+    Output: 
+        t: The time vector (samples) for the pulse, ranging from -span/2 to span/2.
+        pulse: A root raised cosine pulse (normalized to unit peak), symmetric and centered at t=0. 
+    """
+
+    if beta < 0 or beta > 1: 
+        raise ValueError("Rolloff factor (beta) must be between 0 and 1.")
+    if span < 1 or not isinstance(span, int):
+        raise ValueError("Span must be a positive integer.")
+    if sps < 1 or not isinstance(sps, int):
+        raise ValueError("Samples per symbol (sps) must be a positive integer.")
+    
+    # Generate time vector (samples)
+    # length = 2*span * sps + 1
+    length = span*sps + 1
+    t = np.linspace(-span/2, span/2, length)
+
+    # Calculate root raised cosine pulse
+    if (beta == 0):
+        pulse = np.sinc(t)
+    else:
+        # impulse response from Wikipedia
+        pulse = np.zeros_like(t)
+        t_nonzero = t[(np.abs(t) != 0) & (np.abs(4 * beta * t) != 1)]
+        pulse[(np.abs(t) != 0) & (np.abs(4 * beta * t) != 1)] = ( np.sin(np.pi * t_nonzero * (1 - beta)) + 4 * beta * t_nonzero * np.cos(np.pi * t_nonzero * (1 + beta)) ) / (np.pi * t_nonzero * (1 - (4 * beta * t_nonzero)**2))
+        pulse[np.abs(t) == 0] = 1 + beta * (4 / np.pi - 1)
+        pulse[np.abs(4 * beta * t) == 1] = beta / np.sqrt(2) * ( (1 + 2 / np.pi) * np.sin(np.pi / (4 * beta)) + (1 - 2 / np.pi) * np.cos(np.pi / (4 * beta)) )
+
+    # Normalize to unit norm
+    pulse /= np.sqrt(np.sum(np.abs(pulse)**2))
+    # pulse /= np.max(np.abs(pulse))
+
+    # plt.plot(t, pulse)
+    # plt.grid(True)
+    # plt.show()
+
+    return t, pulse
+
+def gen_primes (N): 
+    """
+    Generates a list of prime numbers up to N (inclusive). "Borrowed" from https://rebrained.com/?p=458 
+
+    Inputs:
+        N: The upper limit for generating primes.
+
+    Output:
+        primes: A list of prime numbers up to N.
+    """
+    
+    primes=np.arange(3,N+1,2)
+    isprime=np.ones((N-1)//2,dtype=bool)
+    for factor in primes[:int(math.sqrt(N))//2]:
+        if isprime[(factor-2)//2]: isprime[(factor*3-2)//2::factor]=0
+    return np.insert(primes[isprime],0,2)
+
+def gen_zadoff_chu_sequence (N, root=1): 
+    """
+    Generates a Zadoff-Chu sequence of length N with a given root index.
+
+    Inputs:
+        N: Length of the Zadoff-Chu sequence (must be prime).
+        root: Root index for the sequence (default is 1).
+
+    Output:
+        zc_seq: The generated Zadoff-Chu sequence.
+    """
+    if N <= 0 or N != gen_primes(N)[-1]:
+        raise ValueError("N must be a positive prime integer.")
+    
+    if root < 1 or root >= N:
+        raise ValueError("Root index must be in the range [1, N-1].")
+
+    n = np.arange(N)
+    zc_seq = np.exp(-1j * np.pi * root * n * (n + 1) / N)
+
+    return zc_seq

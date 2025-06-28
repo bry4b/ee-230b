@@ -166,22 +166,25 @@ def gen_primes (N):
 
 def gen_zadoff_chu_sequence (N, root=1): 
     """
-    Generates a Zadoff-Chu sequence of length N with a given root index.
+    Generates a Zadoff-Chu sequence of length N_zc with a given root index.
 
     Inputs:
-        N: Length of the Zadoff-Chu sequence (must be prime).
+        N: Length of the Zadoff-Chu sequence.
         root: Root index for the sequence (default is 1).
 
     Output:
+        N_zc: Length of the Zadoff-Chu sequence equal to largest prime less than or equal to N. 
         zc_seq: The generated Zadoff-Chu sequence.
     """
-    if N <= 0 or N != gen_primes(N)[-1]:
-        raise ValueError("N must be a positive prime integer.")
-    
+    if N <= 0 or not isinstance(N, int):
+        raise ValueError("N must be a positive integer.")
+    if N != gen_primes(N)[-1]: 
+        N = gen_primes(N)[-1]
+        print(f"Warning: N is not prime, choosing the largest prime less than N: {N}.")
     if root < 1 or root >= N:
         raise ValueError("Root index must be in the range [1, N-1].")
 
     n = np.arange(N)
     zc_seq = np.exp(-1j * np.pi * root * n * (n + 1) / N)
 
-    return zc_seq
+    return N, zc_seq
